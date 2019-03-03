@@ -1302,7 +1302,7 @@ static int proc_do_submiturb(struct usb_dev_state *ps, struct usbdevfs_urb *uurb
 				USBDEVFS_URB_BULK_CONTINUATION |
 				USBDEVFS_URB_NO_FSBR |
 				USBDEVFS_URB_ZERO_PACKET |
-				USBDEVFS_URB_NO_INTERRUPT);
+				USBDEVFS_URB_NO_INTERRUPT;
 	/* USBDEVFS_URB_ISO_ASAP is a special case */
 	if (uurb->type == USBDEVFS_URB_TYPE_ISO)
         mask |= USBDEVFS_URB_ISO_ASAP;
