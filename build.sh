@@ -1,8 +1,8 @@
-export KBUILD_BUILD_USER=baddar90
-export KBUILD_BUILD_HOST=hidden
+export KBUILD_BUILD_USER=justin
+export KBUILD_BUILD_HOST=ubuntu
 export ARCH=arm64
 export CROSS_COMPILE=$HOME/Desktop/toolchain/bin/aarch64-linux-android-
-
+export CROSS_COMPILE=/home/justin/android/toolchain/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9/bin/aarch64-linux-android-
 DIR=$(pwd)
 BUILD="$DIR/build"
 OUT="$DIR/out"
