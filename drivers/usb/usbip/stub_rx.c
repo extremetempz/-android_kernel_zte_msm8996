@@ -379,16 +379,26 @@ static int get_pipe(struct stub_device *sdev, int epnum, int dir)
 			return usb_rcvintpipe(udev, epnum);
 	}
 
-	if (usb_endpoint_xfer_isoc(epd)) {
+		if (usb_endpoint_xfer_isoc(epd)) {
+		/* validate number of packets */
+		if (pdu->u.cmd_submit.number_of_packets < 0 ||
+		    pdu->u.cmd_submit.number_of_packets >
+		    USBIP_MAX_ISO_PACKETS) {
+			dev_err(&sdev->udev->dev,
+				"CMD_SUBMIT: isoc invalid num packets %d\n",
+				pdu->u.cmd_submit.number_of_packets);
+			return -1;
+		}
 		if (dir == USBIP_DIR_OUT)
 			return usb_sndisocpipe(udev, epnum);
 		else
 			return usb_rcvisocpipe(udev, epnum);
 	}
 
+err_ret:
 	/* NOT REACHED */
-	dev_err(&sdev->interface->dev, "get pipe, epnum %d\n", epnum);
-	return 0;
+	dev_err(&sdev->udev->dev, "CMD_SUBMIT: invalid epnum %d\n", epnum);
+	return -1;
 }
 
 static void masking_bogus_flags(struct urb *urb)
