@@ -2030,7 +2030,7 @@ static inline void ufshcd_copy_sense_data(struct ufshcd_lrb *lrbp)
 
 		memcpy(lrbp->sense_buffer,
 			lrbp->ucd_rsp_ptr->sr.sense_data,
-			min_t(int, len_to_copy, UFSHCD_REQ_SENSE_SIZE));
+			min_t(int, len_to_copy, SCSI_SENSE_BUFFERSIZE));
 	}
 }
 
@@ -2186,10 +2186,8 @@ __ufshcd_send_uic_cmd(struct ufs_hba *hba, struct uic_command *uic_cmd,
 		return -EIO;
 	}
 
-	if (completion) {
+	if (completion)
 		init_completion(&uic_cmd->done);
-		uic_cmd->comp_inited = true;
-	}
 
 	ufshcd_dispatch_uic_cmd(hba, uic_cmd);
 
@@ -2646,6 +2644,9 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 	if (ufshcd_is_hibern8_on_idle_allowed(hba))
 		WARN_ON(hba->hibern8_on_idle.state != HIBERN8_EXITED);
 
+	/* Vote PM QoS for the request */
+	ufshcd_vops_pm_qos_req_start(hba, cmd->request);
+
 	/* IO svc time latency histogram */
 	if (hba != NULL && cmd->request != NULL) {
 		if (hba->latency_hist_enabled &&
@@ -2677,6 +2678,7 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 		lrbp->cmd = NULL;
 		clear_bit_unlock(tag, &hba->lrb_in_use);
 		ufshcd_release_all(hba);
+		ufshcd_vops_pm_qos_req_end(hba, cmd->request, true);
 		goto out;
 	}
 
@@ -2691,6 +2693,7 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 		lrbp->cmd = NULL;
 		clear_bit_unlock(tag, &hba->lrb_in_use);
 		ufshcd_release_all(hba);
+		ufshcd_vops_pm_qos_req_end(hba, cmd->request, true);
 
 		goto out;
 	}
@@ -2707,6 +2710,7 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 		lrbp->cmd = NULL;
 		clear_bit_unlock(tag, &hba->lrb_in_use);
 		ufshcd_release_all(hba);
+		ufshcd_vops_pm_qos_req_end(hba, cmd->request, true);
 		ufshcd_vops_crypto_engine_cfg_end(hba, lrbp, cmd->request);
 		dev_err(hba->dev, "%s: failed sending command, %d\n",
 							__func__, err);
@@ -5017,8 +5021,7 @@ static void ufshcd_uic_cmd_compl(struct ufs_hba *hba, u32 intr_status)
 			ufshcd_get_uic_cmd_result(hba);
 		hba->active_uic_cmd->argument3 =
 			ufshcd_get_dme_attr_val(hba);
-		if (hba->active_uic_cmd->comp_inited)
-			complete(&hba->active_uic_cmd->done);
+		complete(&hba->active_uic_cmd->done);
 	}
 
 	if ((intr_status & UFSHCD_UIC_PWR_MASK) && hba->uic_async_done)
@@ -5063,6 +5066,8 @@ void ufshcd_abort_outstanding_transfer_requests(struct ufs_hba *hba, int result)
 				 * this must be called before calling
 				 * ->scsi_done() callback.
 				 */
+				ufshcd_vops_pm_qos_req_end(hba, cmd->request,
+					true);
 				ufshcd_vops_crypto_engine_cfg_end(hba,
 						lrbp, cmd->request);
 			}
@@ -5117,6 +5122,8 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 				 * this must be called before calling
 				 * ->scsi_done() callback.
 				 */
+				ufshcd_vops_pm_qos_req_end(hba, cmd->request,
+					false);
 				ufshcd_vops_crypto_engine_cfg_end(hba,
 					lrbp, cmd->request);
 			}
@@ -5466,7 +5473,11 @@ static void ufshcd_exception_event_handler(struct work_struct *work)
 	hba = container_of(work, struct ufs_hba, eeh_work);
 
 	pm_runtime_get_sync(hba->dev);
+
 	ufshcd_scsi_block_requests(hba);
+
+
+
 	err = ufshcd_get_ee_status(hba, &status);
 	if (err) {
 		dev_err(hba->dev, "%s: failed to get exception status %d\n",
@@ -5480,7 +5491,11 @@ static void ufshcd_exception_event_handler(struct work_struct *work)
 		ufshcd_bkops_exception_event_handler(hba);
 
 out:
+
 	ufshcd_scsi_unblock_requests(hba);
+
+
+
 	pm_runtime_put_sync(hba->dev);
 	return;
 }
@@ -8320,6 +8335,7 @@ EXPORT_SYMBOL(ufshcd_system_suspend);
 
 int ufshcd_system_resume(struct ufs_hba *hba)
 {
+
 	int ret = 0;
 	ktime_t start = ktime_get();
 
@@ -8359,6 +8375,7 @@ int ufshcd_runtime_suspend(struct ufs_hba *hba)
 		return -EINVAL;
 
 	if (!hba->is_powered)
+
 		goto out;
 	else
 		ret = ufshcd_suspend(hba, UFS_RUNTIME_PM);
@@ -8368,6 +8385,7 @@ out:
 		hba->curr_dev_pwr_mode,
 		hba->uic_link_state);
 	return ret;
+
 
 }
 EXPORT_SYMBOL(ufshcd_runtime_suspend);
@@ -8395,6 +8413,7 @@ EXPORT_SYMBOL(ufshcd_runtime_suspend);
  */
 int ufshcd_runtime_resume(struct ufs_hba *hba)
 {
+
 	int ret = 0;
 	ktime_t start = ktime_get();
 
@@ -8402,6 +8421,7 @@ int ufshcd_runtime_resume(struct ufs_hba *hba)
 		return -EINVAL;
 
 	if (!hba->is_powered)
+
 		goto out;
 	else
 		ret = ufshcd_resume(hba, UFS_RUNTIME_PM);
@@ -8411,6 +8431,7 @@ out:
 		hba->curr_dev_pwr_mode,
 		hba->uic_link_state);
 	return ret;
+
 }
 EXPORT_SYMBOL(ufshcd_runtime_resume);
 
