@@ -1318,7 +1318,7 @@ out:
 
 static int xpad_init_ff(struct usb_xpad *xpad)
 {
-	if (xpad->xtype == XTYPE_UNKNOWN || xpad->xtype == XTYPE_XBOXONE)
+	if (xpad->xtype == XTYPE_UNKNOWN)
 		return 0;
 
 	input_set_capability(xpad->dev, EV_FF, FF_RUMBLE);
@@ -1424,8 +1424,6 @@ static void xpad_led_set(struct led_classdev *led_cdev,
 
 static int xpad_led_probe(struct usb_xpad *xpad)
 {
-	static atomic_t led_seq	= ATOMIC_INIT(-1);
-	unsigned long led_no;
 	struct xpad_led *led;
 	struct led_classdev *led_cdev;
 	int error;
@@ -1444,9 +1442,6 @@ static int xpad_led_probe(struct usb_xpad *xpad)
 	}
 
 	snprintf(led->name, sizeof(led->name), "xpad%d", xpad->pad_nr);
-	led_no = atomic_inc_return(&led_seq);
-
-	snprintf(led->name, sizeof(led->name), "xpad%lu", led_no);
 	led->xpad = xpad;
 
 	led_cdev = &led->led_cdev;
