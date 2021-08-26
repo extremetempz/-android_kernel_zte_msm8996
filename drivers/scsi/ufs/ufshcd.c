@@ -2030,7 +2030,7 @@ static inline void ufshcd_copy_sense_data(struct ufshcd_lrb *lrbp)
 
 		memcpy(lrbp->sense_buffer,
 			lrbp->ucd_rsp_ptr->sr.sense_data,
-			min_t(int, len_to_copy, SCSI_SENSE_BUFFERSIZE));
+			min_t(int, len_to_copy, UFSHCD_REQ_SENSE_SIZE));
 	}
 }
 
@@ -5473,11 +5473,7 @@ static void ufshcd_exception_event_handler(struct work_struct *work)
 	hba = container_of(work, struct ufs_hba, eeh_work);
 
 	pm_runtime_get_sync(hba->dev);
-
 	ufshcd_scsi_block_requests(hba);
-
-
-
 	err = ufshcd_get_ee_status(hba, &status);
 	if (err) {
 		dev_err(hba->dev, "%s: failed to get exception status %d\n",
@@ -5491,11 +5487,7 @@ static void ufshcd_exception_event_handler(struct work_struct *work)
 		ufshcd_bkops_exception_event_handler(hba);
 
 out:
-
 	ufshcd_scsi_unblock_requests(hba);
-
-
-
 	pm_runtime_put_sync(hba->dev);
 	return;
 }
@@ -8335,7 +8327,6 @@ EXPORT_SYMBOL(ufshcd_system_suspend);
 
 int ufshcd_system_resume(struct ufs_hba *hba)
 {
-
 	int ret = 0;
 	ktime_t start = ktime_get();
 
@@ -8375,7 +8366,6 @@ int ufshcd_runtime_suspend(struct ufs_hba *hba)
 		return -EINVAL;
 
 	if (!hba->is_powered)
-
 		goto out;
 	else
 		ret = ufshcd_suspend(hba, UFS_RUNTIME_PM);
@@ -8385,7 +8375,6 @@ out:
 		hba->curr_dev_pwr_mode,
 		hba->uic_link_state);
 	return ret;
-
 
 }
 EXPORT_SYMBOL(ufshcd_runtime_suspend);
@@ -8413,7 +8402,6 @@ EXPORT_SYMBOL(ufshcd_runtime_suspend);
  */
 int ufshcd_runtime_resume(struct ufs_hba *hba)
 {
-
 	int ret = 0;
 	ktime_t start = ktime_get();
 
@@ -8421,7 +8409,6 @@ int ufshcd_runtime_resume(struct ufs_hba *hba)
 		return -EINVAL;
 
 	if (!hba->is_powered)
-
 		goto out;
 	else
 		ret = ufshcd_resume(hba, UFS_RUNTIME_PM);
@@ -8431,7 +8418,6 @@ out:
 		hba->curr_dev_pwr_mode,
 		hba->uic_link_state);
 	return ret;
-
 }
 EXPORT_SYMBOL(ufshcd_runtime_resume);
 

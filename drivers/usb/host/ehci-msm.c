@@ -99,9 +99,9 @@ static int ehci_msm_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Unable to create HCD\n");
 		return  -ENOMEM;
 	}
-	
+
 	hcd_to_bus(hcd)->skip_resume = true;
-	
+
 	ret = platform_get_irq(pdev, 0);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Unable to get IRQ resource\n");
